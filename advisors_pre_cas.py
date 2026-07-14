@@ -5,7 +5,7 @@ import pandas as pd
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 
-from advisors_theme import apply_advisors_theme
+from advisorstheme import applyadvisorstheme
 
 QUESTION_BANK = {
     "Background": [
@@ -245,7 +245,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-apply_advisors_theme()
+applyadvisorstheme()
 
 st.markdown(
     """
@@ -303,6 +303,27 @@ st.markdown(
     section[data-testid="stSidebar"] * {
         font-size: 1rem !important;
     }
+    .timer-card {
+        border-radius: 22px;
+        padding: 1.4rem 1rem;
+        background: rgba(15, 23, 42, 0.06);
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+    .timer-value {
+        font-size: 4.25rem;
+        font-weight: 900;
+        line-height: 1;
+        margin: 0;
+    }
+    .timer-label {
+        font-size: 1.05rem;
+        margin-top: 0.6rem;
+        opacity: 0.8;
+    }
+    .timer-green { color: #15803d; }
+    .timer-amber { color: #d97706; }
+    .timer-red { color: #dc2626; }
     @media (min-width: 1200px) {
         .block-container {
             padding-left: 2rem;
@@ -682,8 +703,6 @@ else:
             auto_expire_question(idx, category, question)
 
         st.progress(idx / total_q if total_q else 0, text=f"Question {idx + 1} of {total_q}")
-        st.caption(f"Time left for this question: {t_str}")
-
         left, right = st.columns([2.35, 1])
 
         with left:
@@ -775,6 +794,22 @@ else:
                         st.warning(f"Please provide a sufficiently detailed follow-up (at least {DEFAULT_MIN_WORDS} words).")
 
         with right:
+            timer_class = "timer-green"
+            if remaining <= 60:
+                timer_class = "timer-amber"
+            if remaining <= 30:
+                timer_class = "timer-red"
+
+            st.markdown(
+                f"""
+                <div class="timer-card">
+                    <div class="timer-value {timer_class}">{t_str}</div>
+                    <div class="timer-label">Time left</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
             st.subheader("Live Scores")
             for i, sc in enumerate(st.session_state.scores):
                 bar = "█" * sc + "░" * (5 - sc)
