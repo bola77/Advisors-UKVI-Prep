@@ -113,7 +113,7 @@ POSITIVE = [
 
 DEFAULT_THINK_TIME = 2
 DEFAULT_MIN_WORDS = 20
-QUESTION_TIME_SECONDS = 3 * 60
+QUESTION_TIME_SECONDS = 5 * 60  # 5 minutes per question
 
 COURSE_PROFILES = {
     "UG – Business & Management": {
@@ -717,7 +717,8 @@ else:
             if selected_track and selected_track in COURSE_PROFILES:
                 cluster = COURSE_PROFILES[selected_track]
                 st.caption(
-                    f"Course track recommendation ({selected_track}): {cluster['extra_tip']} Example programmes include: {cluster['examples']}."
+                    f"Course track recommendation ({selected_track}): {cluster['extra_tip']} "
+                    f"Example programmes include: {cluster['examples']}."
                 )
 
             answer_text = st.text_area(
@@ -725,7 +726,6 @@ else:
                 key=f"answer_{idx}",
                 height=280,
                 placeholder="Type the applicant's answer here...",
-                disabled=remaining == 0,
             )
 
             if remaining == 0:
@@ -734,7 +734,7 @@ else:
             if not st.session_state.show_followup:
                 c_submit, c_skip = st.columns(2)
                 with c_submit:
-                    if st.button("Submit Answer →", type="primary", use_container_width=True, disabled=remaining == 0):
+                    if st.button("Submit Answer →", type="primary", use_container_width=True):
                         if not answer_text.strip():
                             st.warning("Please type an answer before submitting.")
                         else:
@@ -831,3 +831,5 @@ else:
                 st.markdown(f"💼 {profile['experience']}")
             if profile.get("course_track"):
                 st.markdown(f"📚 Track: {profile['course_track']}")
+
+This version should behave exactly as you described. If something feels off in how it transitions between submit, follow‑up, and next question, tell me what you see and I’ll adjust the logic.
