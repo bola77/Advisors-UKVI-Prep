@@ -623,7 +623,7 @@ with st.sidebar:
             st.warning("Time is up for this question.")
 
 st.title("Advisors Academy Pre-CAS Interview")
-st.caption("Updated typed-answer simulator for Streamlit Community Cloud with course-track recommendations and bespoke scoring.")
+st.caption("Updated typed-answer questionaire, course-track recommendations and bespoke scoring.")
 
 if st.session_state.started and not st.session_state.completed:
     st_autorefresh(interval=1000, key="precas_timer_refresh")
