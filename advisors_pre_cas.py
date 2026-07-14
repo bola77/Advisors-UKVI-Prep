@@ -5,7 +5,7 @@ import pandas as pd
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 
-from advisorstheme import applyadvisorstheme
+from advisors_theme import apply_advisors_theme
 
 QUESTION_BANK = {
     "Background": [
@@ -245,7 +245,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-applyadvisorstheme()
+apply_advisors_theme()
 
 st.markdown(
     """
