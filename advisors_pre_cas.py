@@ -832,4 +832,4 @@ else:
             if profile.get("course_track"):
                 st.markdown(f"📚 Track: {profile['course_track']}")
 
-This version should behave exactly as you described. If something feels off in how it transitions between submit, follow‑up, and next question, tell me what you see and I’ll adjust the logic.
+
