@@ -3,8 +3,9 @@ import time
 
 import pandas as pd
 import streamlit as st
+from streamlit_autorefresh import st_autorefresh
 
-from advisors_theme import apply_advisors_theme
+from advisorstheme import applyadvisorstheme
 
 QUESTION_BANK = {
     "Background": [
@@ -25,7 +26,7 @@ QUESTION_BANK = {
     ],
     "Course knowledge": [
         "What are the names or topics of some modules you will study?",
-        "How long does your course last and what is its structure?",
+        "How long does your course last and how is it structured?",
     ],
     "Finances": [
         "How do you plan to pay for your tuition fees and living expenses in the UK?",
@@ -112,7 +113,7 @@ POSITIVE = [
 
 DEFAULT_THINK_TIME = 2
 DEFAULT_MIN_WORDS = 20
-QUESTION_TIME_SECONDS = 3 * 60
+QUESTION_TIME_SECONDS = 5 * 60
 
 COURSE_PROFILES = {
     "UG – Business & Management": {
@@ -244,7 +245,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-apply_advisors_theme()
+applyadvisorstheme()
 
 st.markdown(
     """
@@ -602,6 +603,9 @@ with st.sidebar:
 
 st.title("Advisors Academy Pre-CAS Interview")
 st.caption("Updated typed-answer simulator for Streamlit Community Cloud with course-track recommendations and bespoke scoring.")
+
+if st.session_state.started and not st.session_state.completed:
+    st_autorefresh(interval=1000, key="precas_timer_refresh")
 
 with st.expander("How your answers are scored"):
     st.markdown(
