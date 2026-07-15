@@ -594,7 +594,7 @@ with st.sidebar:
         st.rerun()
 
     total_sections = len(QUESTION_ORDER)
-    approx_minutes = total_sections * 3
+    approx_minutes = total_sections * 5  # 5 minutes per category
     st.caption(f"Estimated interview duration: about {approx_minutes} minutes ({total_sections} categories, 1 question per category).")
 
     if start:
@@ -623,7 +623,7 @@ with st.sidebar:
             st.warning("Time is up for this question.")
 
 st.title("Advisors Academy Pre-CAS Interview")
-st.caption("Updated typed-answer questionaire, course-track recommendations and bespoke scoring.")
+st.caption("Updated typed-answer questionnaire, course-track recommendations and bespoke scoring.")
 
 if st.session_state.started and not st.session_state.completed:
     st_autorefresh(interval=1000, key="precas_timer_refresh")
@@ -698,6 +698,7 @@ else:
         total_q = len(QUESTION_ORDER)
         remaining, t_str = time_left()
 
+        # auto-expire safety net
         if remaining == 0 and not st.session_state.get("question_expired", False):
             st.session_state.question_expired = True
             auto_expire_question(idx, category, question)
@@ -721,6 +722,7 @@ else:
                     f"Example programmes include: {cluster['examples']}."
                 )
 
+            # main answer box (always enabled while question is active)
             answer_text = st.text_area(
                 "Applicant answer",
                 key=f"answer_{idx}",
@@ -732,6 +734,7 @@ else:
                 st.warning("Time is up for this question. The app will move to the next question.")
 
             if not st.session_state.show_followup:
+                # primary submit + skip row
                 c_submit, c_skip = st.columns(2)
                 with c_submit:
                     if st.button("Submit Answer →", type="primary", use_container_width=True):
@@ -764,6 +767,7 @@ else:
                         pick_question()
                         st.rerun()
             else:
+                # follow-up flow after a weak answer
                 result = st.session_state.last_result
                 stars = "★" * result["score"] + "☆" * (5 - result["score"])
                 st.error(f"Score: {stars} ({result['score']}/5) — {result['feedback']}")
@@ -777,6 +781,7 @@ else:
                 if st.button("Submit Follow-up →", type="primary", use_container_width=True):
                     if follow.strip() and len(follow.split()) >= DEFAULT_MIN_WORDS:
                         new_score = min(result["score"] + 1, 4)
+                        # update last score + log entry
                         st.session_state.scores[-1] = new_score
                         st.session_state.log[-1].update(
                             {
@@ -831,5 +836,3 @@ else:
                 st.markdown(f"💼 {profile['experience']}")
             if profile.get("course_track"):
                 st.markdown(f"📚 Track: {profile['course_track']}")
-
-
