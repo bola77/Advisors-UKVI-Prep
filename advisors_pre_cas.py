@@ -442,13 +442,15 @@ def bespoke_score(answer: str, category: str, profile: dict) -> dict:
     wc = len(answer.split())
     score = 2
     if wc < 15:
+        
         score = 2
-    elif generic_pos >= 4 and wc >= 60:
-        score = 5
-    elif generic_pos >= 2 and wc >= 40:
+        
+    elif wc >= 40 and generic_pos >= 2:
         score = 4
-    elif generic_pos >= 1 and wc >= 25:
+    elif wc >= 30 and generic_pos >= 1:
         score = 3
+    else:
+        score = 3  # default moderate score for decent-length answers
 
     if cluster_hits >= 2 and score <= 4:
         score += 1
