@@ -113,7 +113,7 @@ POSITIVE = [
 
 DEFAULT_THINK_TIME = 2
 DEFAULT_MIN_WORDS = 20
-QUESTION_TIME_SECONDS = 5 * 60  # 5 minutes per question
+QUESTION_TIME_SECONDS = 3 * 60  # 5 minutes per question
 
 COURSE_PROFILES = {
     "UG – Business & Management": {
@@ -239,7 +239,7 @@ COURSE_PROFILES = {
 }
 
 st.set_page_config(
-    page_title="Advisors Academy Pre-CAS Interview",
+    page_title=" Pre-CAS Compliance Interview",
     page_icon="🎓",
     layout="wide",
     initial_sidebar_state="collapsed",
