@@ -1,9 +1,13 @@
 import random
 import time
+import json
+from tempfile import NamedTemporaryFile
 
 import pandas as pd
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
+from openai import OpenAI
+from audio_recorder_streamlit import audio_recorder
 
 from advisors_theme import apply_advisors_theme
 
@@ -113,7 +117,7 @@ POSITIVE = [
 
 DEFAULT_THINK_TIME = 2
 DEFAULT_MIN_WORDS = 20
-QUESTION_TIME_SECONDS = 3 * 60  # 5 minutes per question
+QUESTION_TIME_SECONDS = 3 * 60  # 3 minutes per question
 
 COURSE_PROFILES = {
     "UG – Business & Management": {
@@ -242,10 +246,12 @@ st.set_page_config(
     page_title=" Pre-CAS Compliance Interview",
     page_icon="🎓",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",  # show sidebar by default
 )
 
 apply_advisors_theme()
+
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 st.markdown(
     """
@@ -334,6 +340,19 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+
+def transcribe_audio_bytes(audio_bytes: bytes) -> str:
+    with NamedTemporaryFile(delete=True, suffix=".wav") as temp_file:
+        audio_bytes.seek(0)
+        temp_file.write(audio_bytes.read())
+        temp_file.flush()
+        with open(temp_file.name, "rb") as audio_file:
+            response = client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file,
+            )
+    return response.text
 
 
 def init_session_state():
@@ -442,9 +461,7 @@ def bespoke_score(answer: str, category: str, profile: dict) -> dict:
     wc = len(answer.split())
     score = 2
     if wc < 15:
-        
         score = 2
-        
     elif wc >= 40 and generic_pos >= 2:
         score = 4
     elif wc >= 30 and generic_pos >= 1:
@@ -492,6 +509,51 @@ def bespoke_score(answer: str, category: str, profile: dict) -> dict:
     }
 
 
+def openai_evaluate_answer(answer: str, category: str, question: str, profile: dict) -> dict:
+    prompt = f"""
+You are an expert UK university compliance officer conducting a Pre-CAS interview.
+
+Applicant profile:
+- Name: {profile.get('name', 'Applicant')}
+- Course: {profile.get('course', 'N/A')}
+- University: {profile.get('university', 'N/A')}
+- Home country: {profile.get('country', 'N/A')}
+- Course track: {profile.get('course_track', 'N/A')}
+
+Question category: {category}
+Question: {question}
+
+Applicant answer:
+\"\"\"{answer.strip()}\"\"\"
+
+1. Score the answer from 1–5 (5 = excellent, 1 = high-risk).
+2. Give one concise feedback sentence.
+3. Give one practical student tip to improve the answer.
+4. List any risk flags as short phrases (or say "none").
+5. List key missing points as short phrases (or say "none").
+6. State a readiness level: Low risk / Moderate risk / Elevated risk / High risk.
+
+Respond in compact JSON with keys:
+score, feedback, student_tip, risk_flags, missing_points, readiness.
+"""
+    response = client.responses.create(
+        model="gpt-5.1-mini",
+        input=prompt,
+        response_format={"type": "json_object"},
+    )
+    raw = response.output[0].content[0].text
+    data = json.loads(raw)
+
+    return {
+        "score": int(data.get("score", 3)),
+        "feedback": data.get("feedback", "Answer evaluated."),
+        "student_tip": data.get("student_tip", ANSWER_TIPS.get(category, ANSWER_TIPS["default"])),
+        "risk_flags": data.get("risk_flags", []) or [],
+        "missing_points": data.get("missing_points", []) or [],
+        "readiness": data.get("readiness", "Moderate risk"),
+    }
+
+
 def auto_expire_question(idx: int, category: str, question: str):
     answer_key = f"answer_{idx}"
     latest_text = st.session_state.get(answer_key, "").strip()
@@ -525,39 +587,70 @@ def submit_answer(answer_text: str, idx: int, category: str, question: str):
     if wc < DEFAULT_MIN_WORDS:
         st.warning(f"Your answer is quite short ({wc} words). Aim for at least {DEFAULT_MIN_WORDS} words.")
 
-    result = bespoke_score(cleaned, category, st.session_state.profile)
-    st.success(f"Score: {result['score']}/5 — {result['feedback']}")
-    st.info(f"Student tip: {result['student_tip']}")
+    # 1. Local bespoke scoring
+    local = bespoke_score(cleaned, category, st.session_state.profile)
+
+    final_score = local["score"]
+    feedback = local["feedback"]
+    student_tip = local["student_tip"]
+    risk_flags = local.get("risk_flags", [])
+    missing_points = local.get("missing_points", [])
+    readiness = local.get("readiness", "Moderate risk")
+
+    # 2. Only call OpenAI for weak answers (score <= 2)
+    if final_score <= 2:
+        try:
+            oa = openai_evaluate_answer(cleaned, category, question, st.session_state.profile)
+            st.caption("OpenAI evaluation used for weak answer (score ≤ 2).")
+
+            final_score = int(oa.get("score", final_score))
+            feedback = oa.get("feedback", feedback)
+            student_tip = oa.get("student_tip", student_tip)
+            risk_flags = oa.get("risk_flags", risk_flags) or risk_flags
+            missing_points = oa.get("missing_points", missing_points) or missing_points
+            readiness = oa.get("readiness", readiness)
+        except Exception as e:
+            st.caption(f"OpenAI evaluation unavailable, using local scoring only. ({e})")
+
+    # 3. Display combined result
+    st.success(f"Score: {final_score}/5 — {feedback}")
+    st.info(f"Student tip: {student_tip}")
     st.caption(
-        f"Signals detected: {result.get('generic_pos', 0)} generic positives, {result.get('cluster_hits', 0)} course-track keywords."
+        f"Signals detected: {local.get('generic_pos', 0)} generic positives, "
+        f"{local.get('cluster_hits', 0)} course-track keywords."
     )
+    if risk_flags:
+        st.warning(f"Risk flags: {', '.join(risk_flags)}")
 
-    if result.get("risk_flags"):
-        st.warning(f"Risk flags: {', '.join(result['risk_flags'])}")
-
-    st.session_state.scores.append(result["score"])
+    # 4. Log
+    st.session_state.scores.append(final_score)
     st.session_state.log.append(
         {
             "Question #": idx + 1,
             "Category": category,
             "Question": question,
             "Answer": cleaned,
-            "Score": result["score"],
-            "Feedback": result["feedback"],
-            "Student Tip": result["student_tip"],
-            "Risk Flags": ", ".join(result.get("risk_flags", [])),
-            "Missing Points": ", ".join(result.get("missing_points", [])),
-            "Counsellor Note": result.get("counsellor_note", ""),
-            "Readiness": result.get("readiness", "Moderate risk"),
-            "Red Flag": result.get("red_flag", False),
-            "Generic Positives": result.get("generic_pos", 0),
-            "Cluster Hits": result.get("cluster_hits", 0),
+            "Score": final_score,
+            "Feedback": feedback,
+            "Student Tip": student_tip,
+            "Risk Flags": ", ".join(risk_flags),
+            "Missing Points": ", ".join(missing_points),
+            "Counsellor Note": local.get("counsellor_note", ""),
+            "Readiness": readiness,
+            "Red Flag": local.get("red_flag", False),
+            "Generic Positives": local.get("generic_pos", 0),
+            "Cluster Hits": local.get("cluster_hits", 0),
         }
     )
 
-    if result["score"] <= 2 and category in FOLLOW_UPS:
+    # 5. Follow-up & navigation
+    if final_score <= 2 and category in FOLLOW_UPS:
         st.session_state.show_followup = True
-        st.session_state.last_result = result
+        st.session_state.last_result = {
+            "score": final_score,
+            "feedback": feedback,
+            "student_tip": student_tip,
+        }
     else:
         time.sleep(DEFAULT_THINK_TIME)
         st.session_state.idx += 1
@@ -596,8 +689,11 @@ with st.sidebar:
         st.rerun()
 
     total_sections = len(QUESTION_ORDER)
-    approx_minutes = total_sections * 5  # 5 minutes per category
-    st.caption(f"Estimated interview duration: about {approx_minutes} minutes ({total_sections} categories, 1 question per category).")
+    approx_minutes = total_sections * 3
+    st.caption(
+        f"Estimated interview duration: about {approx_minutes} minutes "
+        f"({total_sections} categories, 1 question per category)."
+    )
 
     if start:
         reset_interview_state()
@@ -625,7 +721,7 @@ with st.sidebar:
             st.warning("Time is up for this question.")
 
 st.title("Advisors Academy Pre-CAS Interview")
-st.caption("Updated typed-answer questionnaire, course-track recommendations and bespoke scoring.")
+st.caption("Updated typed-answer questionnaire, course-track recommendations, audio transcription and bespoke scoring.")
 
 if st.session_state.started and not st.session_state.completed:
     st_autorefresh(interval=1000, key="precas_timer_refresh")
@@ -639,12 +735,15 @@ with st.expander("How your answers are scored"):
 - 2/5 – Weak: vague or incomplete.
 - 1/5 – High risk: unclear or risky language.
 
-This Community Cloud version uses local bespoke scoring only, so it avoids sending applicant answers to external model APIs by default.
+Local bespoke scoring runs first; OpenAI evaluation is used only for weak answers (score ≤ 2).
         """
     )
 
 if not st.session_state.started:
-    st.info(f"Fill in the applicant profile on the left, then click 'Start Pre-CAS Interview'. Estimated duration: about {approx_minutes} minutes.")
+    st.info(
+        f"Fill in the applicant profile on the left, then click 'Start Pre-CAS Interview'. "
+        f"Estimated duration: about {approx_minutes} minutes."
+    )
 else:
     if st.session_state.completed:
         scores = st.session_state.scores
@@ -724,13 +823,25 @@ else:
                     f"Example programmes include: {cluster['examples']}."
                 )
 
-            # main answer box (always enabled while question is active)
+            # main answer box (typed answer)
             answer_text = st.text_area(
                 "Applicant answer",
                 key=f"answer_{idx}",
                 height=280,
                 placeholder="Type the applicant's answer here...",
             )
+
+            # optional audio recording to fill the answer box
+            st.subheader("Optional: Record and transcribe answer")
+            audio_bytes = audio_recorder(pause_threshold=30)
+            if audio_bytes:
+                st.audio(audio_bytes, format="audio/wav")
+                if st.button("Transcribe recording →", use_container_width=True):
+                    with st.spinner("Transcribing via Whisper..."):
+                        transcript = transcribe_audio_bytes(audio_bytes)
+                    st.session_state[f"answer_{idx}"] = transcript
+                    st.success("Recording transcribed and placed into the answer box.")
+                    st.experimental_rerun()
 
             if remaining == 0:
                 st.warning("Time is up for this question. The app will move to the next question.")
@@ -798,7 +909,9 @@ else:
                         pick_question()
                         st.rerun()
                     else:
-                        st.warning(f"Please provide a sufficiently detailed follow-up (at least {DEFAULT_MIN_WORDS} words).")
+                        st.warning(
+                            f"Please provide a sufficiently detailed follow-up (at least {DEFAULT_MIN_WORDS} words)."
+                        )
 
         with right:
             timer_class = "timer-green"
