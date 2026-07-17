@@ -126,7 +126,6 @@ COURSE_PROFILES = {
             "business environment",
         ],
     },
-    # add other profiles here as needed
 }
 
 # ------------ Streamlit & OpenAI setup ------------
@@ -684,6 +683,8 @@ else:
                         try:
                             with st.spinner("Transcribing and scoring recorded answer..."):
                                 transcript = transcribe_audio_bytes(audio_bytes)
+
+                            st.info(f"Transcript preview: {transcript[:100]}...")
                             submit_answer(transcript, idx, category, question)
                         except Exception as e:
                             st.error(f"Transcription failed: {e}")
