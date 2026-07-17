@@ -295,10 +295,9 @@ st.markdown(
 # ------------ Helpers ------------
 
 
-def transcribe_audio_file(uploaded_audio) -> str:
-    """Transcribe audio from st.audio_input using Whisper."""
+def transcribe_audio_file(audio_obj) -> str:
     with NamedTemporaryFile(delete=True, suffix=".wav") as temp_file:
-        temp_file.write(uploaded_audio.getbuffer())
+        temp_file.write(audio_obj.getbuffer())
         temp_file.flush()
         with open(temp_file.name, "rb") as audio_file:
             response = client.audio.transcriptions.create(
@@ -306,7 +305,6 @@ def transcribe_audio_file(uploaded_audio) -> str:
                 file=audio_file,
             )
     return response.text
-
 
 def init_session_state():
     defaults = {
@@ -838,16 +836,36 @@ else:
             )
 
             st.subheader("Optional: Record and submit answer")
-            audio_data = st.audio_input("Record your answer")
-            if audio_data is not None:
-                st.audio(audio_data)
-                if st.button("Submit recorded answer →", use_container_width=True):
-                    if audio_data.size < 2000:
-                        st.warning("Recording too short or empty. Please record again and speak clearly.")
-                    else:
-                        with st.spinner("Transcribing and scoring recorded answer..."):
-                            transcript = transcribe_audio_file(audio_data)
-                        submit_answer(transcript, idx, category, question)
+
+audio_input_available = hasattr(st, "audio_input")
+audio_data = None
+
+if audio_input_available:
+    try:
+        audio_data = st.audio_input("Record your answer")
+    except Exception as e:
+        st.warning(f"Audio recording is unavailable in this deployment. {e}")
+        audio_data = None
+
+    if audio_data is not None:
+        st.audio(audio_data)
+        if st.button("Submit recorded answer →", use_container_width=True):
+            if getattr(audio_data, "size", 0) < 2000:
+                st.warning("Recording too short or empty. Please record again and speak clearly.")
+            else:
+                with st.spinner("Transcribing and scoring recorded answer..."):
+                    transcript = transcribe_audio_file(audio_data)
+                submit_answer(transcript, idx, category, question)
+else:
+    st.info("Audio recording is not available here. Use typed answer or upload an audio file below.")
+
+    uploaded_audio = st.file_uploader("Upload audio file", type=["wav", "mp3", "m4a"])
+    if uploaded_audio is not None:
+        st.audio(uploaded_audio)
+        if st.button("Submit uploaded audio →", use_container_width=True):
+            with st.spinner("Transcribing and scoring uploaded audio..."):
+                transcript = transcribe_audio_file(uploaded_audio)
+            submit_answer(transcript, idx, category, question)
 
             if remaining == 0:
                 st.warning("Time is up for this question. The app will move to the next question.")
