@@ -7,7 +7,6 @@ import pandas as pd
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 from openai import OpenAI
-from audio_recorder_streamlit import audio_recorder
 
 from advisors_theme import apply_advisors_theme
 
@@ -127,7 +126,7 @@ COURSE_PROFILES = {
         "extra_tip": "Mention business modules like strategy, operations, leadership, entrepreneurship, or international business, and explain how they fit your career plan.",
         "keywords": ["business", "management", "strategy", "leadership", "operations", "entrepreneurship", "international business", "organisation", "business environment"],
     },
-    # ... include all other course profiles from your existing file ...
+    # ... include all other course profiles from your previous file ...
     "UG – Accounting & Finance": {
         "examples": "Accounting and Finance; Banking and Finance; Financial Management; Economics and Finance",
         "extra_tip": "Mention finance or accounting modules such as financial reporting, auditing, taxation, investment, or corporate finance, and link them to your career goal.",
@@ -243,8 +242,10 @@ COURSE_PROFILES = {
         "extra_tip": "Mention that this is a graduate-entry route into registered nursing, and refer to clinical placements, NMC standards, patient care, evidence-based practice, simulation, and professional registration.",
         "keywords": ["pre-registration nursing", "adult nursing", "nursing", "clinical placement", "placements", "nmc", "patient care", "evidence-based practice", "simulation", "registered nurse", "professional registration", "clinical skills", "health assessment", "care planning", "practice learning"],
     },
+
 }
 
+# ------------ Streamlit & OpenAI setup ------------
 
 st.set_page_config(
     page_title=" Pre-CAS Compliance Interview",
@@ -260,10 +261,6 @@ client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 st.markdown(
     """
     <style>
-    .stAppDeployButton, .stDeployButton { display: none; }
-    div[data-testid="stToolbar"] { display: none; }
-    header[data-testid="stHeader"] { display: none; }
-    #MainMenu { visibility: hidden; }
     .block-container {
         padding-top: 1.2rem;
         padding-bottom: 2rem;
@@ -295,10 +292,13 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# ------------ Helpers ------------
 
-def transcribe_audio_bytes(audio_bytes: bytes) -> str:
+
+def transcribe_audio_file(uploaded_audio) -> str:
+    """Transcribe audio from st.audio_input using Whisper."""
     with NamedTemporaryFile(delete=True, suffix=".wav") as temp_file:
-        temp_file.write(audio_bytes)
+        temp_file.write(uploaded_audio.getbuffer())
         temp_file.flush()
         with open(temp_file.name, "rb") as audio_file:
             response = client.audio.transcriptions.create(
@@ -708,7 +708,7 @@ with st.sidebar:
 # ------------ Main UI ------------
 
 st.title("Advisors Academy Pre-CAS Interview")
-st.caption("UKVI-aligned typed/audio simulator with bespoke scoring and OpenAI-enriched feedback for weak answers.")
+st.caption("UKVI-aligned typed/audio simulator with Whisper transcription and OpenAI-enriched feedback for weak answers.")
 
 if st.session_state.started and not st.session_state.completed:
     st_autorefresh(interval=1000, key="precas_timer_refresh")
@@ -838,13 +838,16 @@ else:
             )
 
             st.subheader("Optional: Record and submit answer")
-            audio_bytes = audio_recorder(pause_threshold=30)
-            if audio_bytes:
-                st.audio(audio_bytes, format="audio/wav")
+            audio_data = st.audio_input("Record your answer")
+            if audio_data is not None:
+                st.audio(audio_data)
                 if st.button("Submit recorded answer →", use_container_width=True):
-                    with st.spinner("Transcribing and scoring recorded answer..."):
-                        transcript = transcribe_audio_bytes(audio_bytes)
-                    submit_answer(transcript, idx, category, question)
+                    if audio_data.size < 2000:
+                        st.warning("Recording too short or empty. Please record again and speak clearly.")
+                    else:
+                        with st.spinner("Transcribing and scoring recorded answer..."):
+                            transcript = transcribe_audio_file(audio_data)
+                        submit_answer(transcript, idx, category, question)
 
             if remaining == 0:
                 st.warning("Time is up for this question. The app will move to the next question.")
