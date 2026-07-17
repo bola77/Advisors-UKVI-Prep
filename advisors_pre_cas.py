@@ -169,16 +169,32 @@ st.markdown(
 # ------------ Helpers ------------
 
 def transcribe_audio_bytes(audio_bytes: bytes) -> str:
-    """Write raw bytes to temp WAV and send to Whisper."""
+    """Transcribe raw audio bytes using OpenAI Responses API."""
     with NamedTemporaryFile(delete=True, suffix=".wav") as temp_file:
         temp_file.write(audio_bytes)
         temp_file.flush()
         with open(temp_file.name, "rb") as audio_file:
-            response = client.audio.transcriptions.create(
-                model="whisper-1",
-                file=audio_file,
-            )
-    return response.text
+            audio_data = audio_file.read()
+
+    resp = client.responses.create(
+        model="gpt-4o-mini",
+        input=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "input_audio",
+                        "audio": {
+                            "data": audio_data,
+                            "format": "wav",
+                        },
+                    }
+                ],
+            }
+        ],
+        response_format={"type": "text"},
+    )
+    return resp.output[0].content[0].text
 
 def init_session_state():
     defaults = {
@@ -540,7 +556,7 @@ with st.sidebar:
 # ------------ Main UI ------------
 
 st.title("Advisors Academy Pre-CAS Interview")
-st.caption("UKVI-aligned typed/audio simulator with Whisper transcription and OpenAI-enriched feedback for weak answers.")
+st.caption("UKVI-aligned typed/audio simulator with audio transcription via OpenAI Responses API and enriched feedback for weak answers.")
 
 if st.session_state.started and not st.session_state.completed:
     st_autorefresh(interval=1000, key="precas_timer_refresh")
