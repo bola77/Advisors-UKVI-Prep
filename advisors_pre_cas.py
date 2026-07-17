@@ -7,6 +7,7 @@ import pandas as pd
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 from openai import OpenAI
+from audio_recorder_streamlit import audio_recorder
 
 from advisors_theme import apply_advisors_theme
 
@@ -58,17 +59,6 @@ QUESTION_ORDER = [
     "Future plans",
 ]
 
-FOLLOW_UPS = {
-    "Study destination": "Can you be more specific about why the UK suits your goals compared to other countries?",
-    "Institution choice": "What do you know about the specific strengths of your department or faculty?",
-    "Course choice": "How exactly does this course connect to your previous experience and qualifications?",
-    "Course knowledge": "Can you name at least two specific modules and explain what they cover?",
-    "Finances": "Can you explain the exact source of the funds, how long they have been held, and what evidence you will show?",
-    "Accommodation": "Have you actually confirmed accommodation, or is this still under consideration?",
-    "Background": "What were you doing between finishing your previous study and applying for this course?",
-    "Future plans": "What specific role will you return to in your home country, and which organisation are you targeting?",
-}
-
 QUESTION_HINTS = {
     "Study destination": "Mention 1–2 concrete reasons: course quality, recognition, Graduate Route, or proximity, based on your own research.",
     "Institution choice": "Mention a specific feature: ranking, facilities, department strength, or placement links, and how you found this out.",
@@ -118,7 +108,7 @@ POSITIVE = [
 
 DEFAULT_THINK_TIME = 2
 DEFAULT_MIN_WORDS = 20
-QUESTION_TIME_SECONDS = 3 * 60  # 3 minutes per question
+QUESTION_TIME_SECONDS = 3 * 60
 
 COURSE_PROFILES = {
     "UG – Business & Management": {
@@ -126,146 +116,26 @@ COURSE_PROFILES = {
         "extra_tip": "Mention business modules like strategy, operations, leadership, entrepreneurship, or international business, and explain how they fit your career plan.",
         "keywords": ["business", "management", "strategy", "leadership", "operations", "entrepreneurship", "international business", "organisation", "business environment"],
     },
-    # ... include all other course profiles from your previous file ...
-    "UG – Accounting & Finance": {
-        "examples": "Accounting and Finance; Banking and Finance; Financial Management; Economics and Finance",
-        "extra_tip": "Mention finance or accounting modules such as financial reporting, auditing, taxation, investment, or corporate finance, and link them to your career goal.",
-        "keywords": ["accounting", "finance", "taxation", "audit", "auditing", "financial reporting", "investment", "banking", "corporate finance", "economics"],
-    },
-    "UG – Marketing & Digital Marketing": {
-        "examples": "Marketing; Digital Marketing; Branding; Advertising and Marketing Communications",
-        "extra_tip": "Mention modules like consumer behaviour, branding, digital strategy, social media marketing, or market research, and explain how they support your career progression.",
-        "keywords": ["marketing", "digital marketing", "branding", "advertising", "consumer behaviour", "market research", "social media", "campaign", "seo", "content"],
-    },
-    "UG – Computer Science & IT": {
-        "examples": "Computer Science; Computing; Information Technology; Software Engineering",
-        "extra_tip": "Mention technical areas such as programming, databases, software development, operating systems, networking, or web development, and connect them to your experience or goals.",
-        "keywords": ["computer science", "computing", "information technology", "software", "programming", "database", "network", "web development", "algorithm", "system design"],
-    },
-    "UG – Cyber Security & Networks": {
-        "examples": "Cyber Security; Network Computing; Information Security; Digital Forensics",
-        "extra_tip": "Mention topics like information security, ethical hacking, network security, digital forensics, or risk management, and explain how they relate to your planned role.",
-        "keywords": ["cyber security", "information security", "network security", "ethical hacking", "digital forensics", "risk", "threat", "soc", "penetration testing", "security"],
-    },
-    "UG – Data Science & AI": {
-        "examples": "Data Science; Artificial Intelligence; Machine Learning; Business Analytics",
-        "extra_tip": "Mention analytics, machine learning, statistics, Python, big data, or AI applications, and explain how these skills support your future work.",
-        "keywords": ["data science", "artificial intelligence", "machine learning", "analytics", "statistics", "python", "big data", "data visualisation", "predictive", "model"],
-    },
-    "UG – Engineering": {
-        "examples": "Mechanical Engineering; Civil Engineering; Electrical and Electronic Engineering; General Engineering",
-        "extra_tip": "Mention technical modules, lab work, design, manufacturing, structures, circuits, or project-based learning, and explain the engineering career path you want to follow.",
-        "keywords": ["engineering", "mechanical", "civil", "electrical", "electronic", "design", "manufacturing", "structures", "materials", "thermodynamics", "circuits"],
-    },
-    "UG – Health & Social Care": {
-        "examples": "Health and Social Care; Health Care Management; Community Health; Social Care",
-        "extra_tip": "Mention care systems, safeguarding, patient support, policy, or service delivery, and show how the course fits your healthcare or community career goals.",
-        "keywords": ["health", "social care", "care", "community", "safeguarding", "patient", "service delivery", "wellbeing", "support", "healthcare"],
-    },
-    "UG – Nursing": {
-        "examples": "Adult Nursing; Mental Health Nursing; Child Nursing; Nursing Practice",
-        "extra_tip": "Mention clinical placements, patient care, evidence-based practice, professional standards, or nursing specialisms, and connect them to your long-term clinical plan.",
-        "keywords": ["nursing", "clinical", "placement", "patient care", "evidence-based practice", "adult nursing", "mental health", "child nursing", "midwifery", "healthcare practice"],
-    },
-    "UG – Biomedical & Life Sciences": {
-        "examples": "Biomedical Science; Biological Sciences; Medical Science; Human Biology",
-        "extra_tip": "Mention laboratory skills, human biology, microbiology, genetics, pathology, or biomedical research, and explain how they support your intended profession.",
-        "keywords": ["biomedical", "biology", "microbiology", "genetics", "pathology", "laboratory", "human biology", "life sciences", "diagnostics", "research"],
-    },
-    "UG – Law": {
-        "examples": "Law; International Law; Commercial Law; Law and Practice",
-        "extra_tip": "Mention legal research, contract law, criminal law, international law, or legal practice, and explain how the course supports your legal or policy career path.",
-        "keywords": ["law", "legal", "contract", "criminal law", "commercial law", "international law", "legal research", "policy", "regulation", "justice"],
-    },
-    "UG – Psychology": {
-        "examples": "Psychology; Applied Psychology; Clinical Psychology pathway; Counselling Studies",
-        "extra_tip": "Mention psychological theory, research methods, behavioural science, cognition, development, or mental health topics, and explain your intended professional use of the degree.",
-        "keywords": ["psychology", "behaviour", "mental health", "research methods", "cognition", "development", "counselling", "clinical", "behavioural science", "wellbeing"],
-    },
-    "UG – Education": {
-        "examples": "Education Studies; Primary Education; Teaching Studies; Childhood Education",
-        "extra_tip": "Mention curriculum, pedagogy, inclusive education, classroom practice, or educational leadership, and connect the course to your teaching or education role.",
-        "keywords": ["education", "teaching", "pedagogy", "curriculum", "classroom", "inclusive education", "childhood", "learning", "teacher", "assessment"],
-    },
-    "PG – MBA & Management": {
-        "examples": "MBA; International Business Management; Management; Leadership",
-        "extra_tip": "Mention leadership, strategy, operations, innovation, organisational behaviour, or global business, and explain your management progression clearly.",
-        "keywords": ["mba", "management", "leadership", "strategy", "operations", "innovation", "organisation", "business leadership", "global business", "executive"],
-    },
-    "PG – Project Management": {
-        "examples": "MSc Project Management; Construction Project Management; Engineering Management",
-        "extra_tip": "Mention project planning, budgeting, scheduling, procurement, risk, quality, or stakeholder management, and link the course to your industry experience.",
-        "keywords": ["project management", "project planning", "budgeting", "scheduling", "stakeholder", "risk management", "procurement", "quality", "delivery", "pmp"],
-    },
-    "PG – Public Health": {
-        "examples": "Master of Public Health; Public Health and Community Studies; Global Health",
-        "extra_tip": "Mention epidemiology, health promotion, policy, biostatistics, environmental health, or population health, and explain how this supports your work back home.",
-        "keywords": ["public health", "epidemiology", "health promotion", "policy", "biostatistics", "population health", "community health", "global health", "prevention", "environmental health"],
-    },
-    "PG – Data Science, AI & Analytics": {
-        "examples": "MSc Data Science; MSc Artificial Intelligence; MSc Business Analytics; Big Data Analytics",
-        "extra_tip": "Mention machine learning, statistical modelling, analytics, data engineering, AI, or visualisation, and explain how the programme supports your technical career goals.",
-        "keywords": ["data science", "analytics", "machine learning", "artificial intelligence", "statistical modelling", "data engineering", "python", "big data", "visualisation", "predictive analytics"],
-    },
-    "PG – Cyber Security": {
-        "examples": "MSc Cyber Security; MSc Information Security; MSc Digital Forensics",
-        "extra_tip": "Mention cyber risk, governance, security operations, network defence, penetration testing, or digital forensics, and explain the specific role you want after graduation.",
-        "keywords": ["cyber security", "information security", "governance", "risk", "digital forensics", "penetration testing", "security operations", "network defence", "security policy", "compliance"],
-    },
-    "PG – Finance, FinTech & Accounting": {
-        "examples": "MSc Finance; MSc Accounting and Finance; MSc FinTech; MSc Investment Management",
-        "extra_tip": "Mention financial analysis, investment, risk, FinTech, corporate finance, accounting standards, or portfolio management, and link these to your target role.",
-        "keywords": ["finance", "fintech", "investment", "accounting", "financial analysis", "portfolio", "corporate finance", "risk", "banking", "financial management"],
-    },
-    "PG – Logistics & Supply Chain": {
-        "examples": "MSc Supply Chain Management; MSc Logistics; MSc Procurement and Supply",
-        "extra_tip": "Mention procurement, logistics, operations, inventory, supply chain strategy, or global trade, and explain the business problem you want to solve in your home country.",
-        "keywords": ["supply chain", "logistics", "procurement", "inventory", "operations", "distribution", "global trade", "warehouse", "transport", "planning"],
-    },
-    "PG – Engineering Management": {
-        "examples": "MSc Engineering Management; MSc Advanced Manufacturing; MSc Sustainable Energy",
-        "extra_tip": "Mention engineering systems, project delivery, manufacturing, sustainability, energy, or leadership in technical environments, and connect the degree to your prior technical background.",
-        "keywords": ["engineering management", "manufacturing", "sustainable energy", "technical leadership", "systems", "operations", "maintenance", "production", "engineering project", "industrial"],
-    },
-    "PG – Health Management": {
-        "examples": "MSc Health Services Management; MSc Healthcare Management; MSc International Health Management",
-        "extra_tip": "Mention healthcare systems, service improvement, leadership, policy, quality assurance, or health administration, and explain how you will apply this in your home country.",
-        "keywords": ["health management", "healthcare management", "health services", "service improvement", "quality assurance", "health policy", "administration", "leadership", "hospital", "patient services"],
-    },
-    "PG – Law & International Relations": {
-        "examples": "LLM International Law; LLM Commercial Law; MSc International Relations",
-        "extra_tip": "Mention legal analysis, international regulation, governance, dispute resolution, diplomacy, or policy, and explain your intended professional application.",
-        "keywords": ["llm", "international law", "commercial law", "legal analysis", "regulation", "governance", "policy", "diplomacy", "international relations", "dispute resolution"],
-    },
-    "PG – Pre-registration Nursing": {
-        "examples": "MSc Adult Nursing (Pre-registration); Master of Nursing with Pre-Registration (Adult); MSc Nursing (Pre-registration - Adult); MSc Nursing Studies (Adult) Pre-registration",
-        "extra_tip": "Mention that this is a graduate-entry route into registered nursing, and refer to clinical placements, NMC standards, patient care, evidence-based practice, simulation, and professional registration.",
-        "keywords": ["pre-registration nursing", "adult nursing", "nursing", "clinical placement", "placements", "nmc", "patient care", "evidence-based practice", "simulation", "registered nurse", "professional registration", "clinical skills", "health assessment", "care planning", "practice learning"],
-    },
-
+    # add other profiles here as needed
+    
 }
 
 # ------------ Streamlit & OpenAI setup ------------
 
 st.set_page_config(
-    page_title=" Pre-CAS Compliance Interview",
+    page_title="Advisors Academy Pre-CAS Interview",
     page_icon="🎓",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 apply_advisors_theme()
-
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 st.markdown(
     """
     <style>
-    .block-container {
-        padding-top: 1.2rem;
-        padding-bottom: 2rem;
-        max-width: 1500px;
-    }
+    .block-container { padding-top: 1.2rem; padding-bottom: 2rem; max-width: 1500px; }
     .timer-card {
         border-radius: 22px;
         padding: 1.4rem 1rem;
@@ -279,11 +149,7 @@ st.markdown(
         line-height: 1;
         margin: 0;
     }
-    .timer-label {
-        font-size: 1.05rem;
-        margin-top: 0.6rem;
-        opacity: 0.8;
-    }
+    .timer-label { font-size: 1.05rem; margin-top: 0.6rem; opacity: 0.8; }
     .timer-green { color: #15803d; }
     .timer-amber { color: #d97706; }
     .timer-red { color: #dc2626; }
@@ -294,10 +160,10 @@ st.markdown(
 
 # ------------ Helpers ------------
 
-
-def transcribe_audio_file(audio_obj) -> str:
+def transcribe_audio_bytes(audio_bytes: bytes) -> str:
+    """Write raw bytes to temp WAV and send to Whisper."""
     with NamedTemporaryFile(delete=True, suffix=".wav") as temp_file:
-        temp_file.write(audio_obj.getbuffer())
+        temp_file.write(audio_bytes)
         temp_file.flush()
         with open(temp_file.name, "rb") as audio_file:
             response = client.audio.transcriptions.create(
@@ -323,28 +189,16 @@ def init_session_state():
         if key not in st.session_state:
             st.session_state[key] = value
 
-
 def reset_interview_state():
-    keys_to_clear = [
-        "started",
-        "completed",
-        "idx",
-        "scores",
-        "log",
-        "profile",
-        "current_category",
-        "current_question",
-        "question_start",
-        "question_expired",
-    ]
+    keys_to_clear = ["started", "completed", "idx", "scores", "log", "profile",
+                     "current_category", "current_question", "question_start",
+                     "question_expired"]
     for key in keys_to_clear:
         if key in st.session_state:
             del st.session_state[key]
-    keys_to_drop = [k for k in st.session_state.keys() if k.startswith("answer_")]
-    for key in keys_to_drop:
+    for key in [k for k in st.session_state.keys() if k.startswith("answer_")]:
         del st.session_state[key]
     init_session_state()
-
 
 def pick_question():
     idx = st.session_state.idx
@@ -357,7 +211,6 @@ def pick_question():
     st.session_state.question_start = time.time()
     st.session_state.question_expired = False
 
-
 def time_left():
     start = st.session_state.get("question_start")
     if not start:
@@ -365,7 +218,6 @@ def time_left():
     elapsed = time.time() - start
     remaining = max(0, int(QUESTION_TIME_SECONDS - elapsed))
     return remaining, f"{remaining // 60:02d}:{remaining % 60:02d}"
-
 
 def verdict(avg: float) -> str:
     if avg >= 4.5:
@@ -376,11 +228,9 @@ def verdict(avg: float) -> str:
         return "🟠 At risk — more practice needed"
     return "🔴 High risk — urgent coaching required"
 
-
 def bespoke_score(answer: str, category: str, profile: dict) -> dict:
     lower = answer.lower()
 
-    # Hard UKVI red flags — always High risk
     for flag in RED_FLAGS:
         if flag in lower:
             return {
@@ -405,7 +255,6 @@ def bespoke_score(answer: str, category: str, profile: dict) -> dict:
         cluster_hits = sum(1 for keyword in keywords if keyword.lower() in lower)
 
     wc = len(answer.split())
-    score = 2
     if wc < 15:
         score = 2
     elif wc >= 40 and generic_pos >= 2:
@@ -435,13 +284,7 @@ def bespoke_score(answer: str, category: str, profile: dict) -> dict:
     else:
         student_tip = ANSWER_TIPS.get(category, ANSWER_TIPS["default"])
 
-    readiness = {
-        5: "Low risk",
-        4: "Moderate risk",
-        3: "Moderate risk",
-        2: "Elevated risk",
-        1: "High risk",
-    }[score]
+    readiness = {5: "Low risk", 4: "Moderate risk", 3: "Moderate risk", 2: "Elevated risk", 1: "High risk"}[score]
 
     return {
         "score": score,
@@ -455,7 +298,6 @@ def bespoke_score(answer: str, category: str, profile: dict) -> dict:
         "cluster_hits": cluster_hits,
         "readiness": readiness,
     }
-
 
 def openai_evaluate_answer(answer: str, category: str, question: str, profile: dict) -> dict:
     prompt = f"""
@@ -474,24 +316,15 @@ Question: {question}
 Applicant answer:
 \"\"\"{answer.strip()}\"\"\"
 
-1. Score the answer from 1–5 (5 = excellent, 1 = high-risk).
-2. Give one concise feedback sentence.
-3. Give one practical student tip to improve the answer.
-4. List any risk flags as short phrases (or say "none").
-5. List key missing points as short phrases (or say "none").
-6. State a readiness level: Low risk / Moderate risk / Elevated risk / High risk.
-
-Respond in compact JSON with keys:
-score, feedback, student_tip, risk_flags, missing_points, readiness.
+Return compact JSON with keys:
+score, feedback, student_tip, risk_flags, missing_points, readiness
 """
     response = client.responses.create(
         model="gpt-5.1-mini",
         input=prompt,
         response_format={"type": "json_object"},
     )
-    raw = response.output[0].content[0].text
-    data = json.loads(raw)
-
+    data = json.loads(response.output[0].content[0].text)
     return {
         "score": int(data.get("score", 3)),
         "feedback": data.get("feedback", "Answer evaluated."),
@@ -500,7 +333,6 @@ score, feedback, student_tip, risk_flags, missing_points, readiness.
         "missing_points": data.get("missing_points", []) or [],
         "readiness": data.get("readiness", "Moderate risk"),
     }
-
 
 def auto_expire_question(idx: int, category: str, question: str):
     answer_key = f"answer_{idx}"
@@ -528,30 +360,21 @@ def auto_expire_question(idx: int, category: str, question: str):
     pick_question()
     st.rerun()
 
-
 def submit_answer(answer_text: str, idx: int, category: str, question: str):
     cleaned = answer_text.strip()
     wc = len(cleaned.split())
     if wc < DEFAULT_MIN_WORDS:
         st.warning(f"Your answer is quite short ({wc} words). Aim for at least {DEFAULT_MIN_WORDS} words.")
 
-    # 1. Local bespoke scoring
     local = bespoke_score(cleaned, category, st.session_state.profile)
 
-    # Hard red flags: no OpenAI, just mark high risk and move on
     if local.get("red_flag"):
         final_score = local["score"]
-        feedback = local["feedback"]
-        student_tip = local["student_tip"]
-        risk_flags = local.get("risk_flags", [])
-        missing_points = local.get("missing_points", [])
-        readiness = local.get("readiness", "High risk")
-
         st.error("This answer contains UKVI high-risk language and must be reframed.")
-        st.success(f"Score: {final_score}/5 — {feedback}")
-        st.info(f"Student tip: {student_tip}")
-        if risk_flags:
-            st.warning(f"Risk flags: {', '.join(risk_flags)}")
+        st.success(f"Score: {final_score}/5 — {local['feedback']}")
+        st.info(f"Student tip: {local['student_tip']}")
+        if local.get("risk_flags"):
+            st.warning(f"Risk flags: {', '.join(local['risk_flags'])}")
 
         st.session_state.scores.append(final_score)
         st.session_state.log.append(
@@ -561,25 +384,23 @@ def submit_answer(answer_text: str, idx: int, category: str, question: str):
                 "Question": question,
                 "Answer": cleaned,
                 "Score": final_score,
-                "Feedback": feedback,
-                "Student Tip": student_tip,
-                "Risk Flags": ", ".join(risk_flags),
-                "Missing Points": ", ".join(missing_points),
+                "Feedback": local["feedback"],
+                "Student Tip": local["student_tip"],
+                "Risk Flags": ", ".join(local.get("risk_flags", [])),
+                "Missing Points": ", ".join(local.get("missing_points", [])),
                 "Counsellor Note": local.get("counsellor_note", ""),
-                "Readiness": readiness,
+                "Readiness": local.get("readiness", "High risk"),
                 "Red Flag": True,
                 "Generic Positives": local.get("generic_pos", 0),
                 "Cluster Hits": local.get("cluster_hits", 0),
             }
         )
-
         time.sleep(DEFAULT_THINK_TIME)
         st.session_state.idx += 1
         pick_question()
         st.rerun()
         return
 
-    # 2. Non-red-flag answers: OpenAI enrichment for weak scores
     final_score = local["score"]
     feedback = local["feedback"]
     student_tip = local["student_tip"]
@@ -591,7 +412,6 @@ def submit_answer(answer_text: str, idx: int, category: str, question: str):
         try:
             oa = openai_evaluate_answer(cleaned, category, question, st.session_state.profile)
             st.caption("OpenAI enrichment applied for weak answer (score ≤ 2).")
-
             final_score = int(oa.get("score", final_score))
             feedback = oa.get("feedback", feedback)
             student_tip = oa.get("student_tip", student_tip)
@@ -601,7 +421,6 @@ def submit_answer(answer_text: str, idx: int, category: str, question: str):
         except Exception as e:
             st.caption(f"OpenAI evaluation unavailable, using local scoring only. ({e})")
 
-    # 3. Show combined result
     st.success(f"Score: {final_score}/5 — {feedback}")
     st.info(f"Student tip: {student_tip}")
     st.caption(
@@ -613,7 +432,6 @@ def submit_answer(answer_text: str, idx: int, category: str, question: str):
     if missing_points:
         st.caption("Missing points: " + ", ".join(missing_points))
 
-    # 4. Log and move to next question
     st.session_state.scores.append(final_score)
     st.session_state.log.append(
         {
@@ -638,7 +456,6 @@ def submit_answer(answer_text: str, idx: int, category: str, question: str):
     st.session_state.idx += 1
     pick_question()
     st.rerun()
-
 
 # ------------ Sidebar ------------
 
@@ -771,8 +588,7 @@ else:
                 "- Strengthen answers for: " + ", ".join(f"`{cat}`" for cat in weak_categories)
             )
 
-            missing_all = []
-            risk_all = []
+            missing_all, risk_all = [], []
             for _, row in weak.iterrows():
                 if isinstance(row.get("Missing Points"), str) and row["Missing Points"]:
                     missing_all.extend([p.strip() for p in row["Missing Points"].split(",") if p.strip()])
@@ -836,36 +652,20 @@ else:
             )
 
             st.subheader("Optional: Record and submit answer")
-
-audio_input_available = hasattr(st, "audio_input")
-audio_data = None
-
-if audio_input_available:
-    try:
-        audio_data = st.audio_input("Record your answer")
-    except Exception as e:
-        st.warning(f"Audio recording is unavailable in this deployment. {e}")
-        audio_data = None
-
-    if audio_data is not None:
-        st.audio(audio_data)
-        if st.button("Submit recorded answer →", use_container_width=True):
-            if getattr(audio_data, "size", 0) < 2000:
-                st.warning("Recording too short or empty. Please record again and speak clearly.")
-            else:
-                with st.spinner("Transcribing and scoring recorded answer..."):
-                    transcript = transcribe_audio_file(audio_data)
-                submit_answer(transcript, idx, category, question)
-else:
-    st.info("Audio recording is not available here. Use typed answer or upload an audio file below.")
-
-    uploaded_audio = st.file_uploader("Upload audio file", type=["wav", "mp3", "m4a"])
-    if uploaded_audio is not None:
-        st.audio(uploaded_audio)
-        if st.button("Submit uploaded audio →", use_container_width=True):
-            with st.spinner("Transcribing and scoring uploaded audio..."):
-                transcript = transcribe_audio_file(uploaded_audio)
-            submit_answer(transcript, idx, category, question)
+            audio_bytes = audio_recorder(
+                pause_threshold=2.0,
+                energy_threshold=0.01,
+                sample_rate=16000,
+            )
+            if audio_bytes:
+                st.audio(audio_bytes, format="audio/wav")
+                if st.button("Submit recorded answer →", use_container_width=True):
+                    if len(audio_bytes) < 2000:
+                        st.warning("Recording too short or empty. Please record again.")
+                    else:
+                        with st.spinner("Transcribing and scoring recorded answer..."):
+                            transcript = transcribe_audio_bytes(audio_bytes)
+                        submit_answer(transcript, idx, category, question)
 
             if remaining == 0:
                 st.warning("Time is up for this question. The app will move to the next question.")
