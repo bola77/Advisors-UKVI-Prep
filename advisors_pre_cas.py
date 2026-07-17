@@ -244,7 +244,7 @@ COURSE_PROFILES = {
         "keywords": ["pre-registration nursing", "adult nursing", "nursing", "clinical placement", "placements", "nmc", "patient care", "evidence-based practice", "simulation", "registered nurse", "professional registration", "clinical skills", "health assessment", "care planning", "practice learning"],
     },
 }
-}
+
 
 st.set_page_config(
     page_title=" Pre-CAS Compliance Interview",
