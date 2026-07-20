@@ -621,7 +621,8 @@ def submit_answer(answer_text: str, idx: int, category: str, question: str):
     if final_score <= 2:
         try:
             oa = openai_evaluate_answer(cleaned, category, question, st.session_state.profile)
-            st.caption("OpenAI enrichment applied for weak answer (score ≤ 2).")
+            st.caption(""Please type the applicant's answer in your own words. "
+    "Copied text or templates may be flagged as weak.".")
             final_score = int(oa.get("score", final_score))
             feedback = oa.get("feedback", feedback)
             student_tip = oa.get("student_tip", student_tip)
