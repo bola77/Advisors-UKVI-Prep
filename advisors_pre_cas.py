@@ -241,7 +241,7 @@ COURSE_PROFILES = {
 
     },
     }      
-}
+
 
 # ------------ Streamlit & OpenAI setup ------------
 
