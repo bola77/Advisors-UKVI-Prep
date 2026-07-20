@@ -259,7 +259,7 @@ client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 st.markdown(
     """
     <style>
-    .block-container { padding-top: 1.2rem; padding-bottom: 2rem; max-width: 1500px; }
+    .block-container { padding-top: 2.0rem; padding-bottom: 2rem; max-width: 1500px; }
     .timer-card {
         border-radius: 22px;
         padding: 2.0rem 3.0rem;
