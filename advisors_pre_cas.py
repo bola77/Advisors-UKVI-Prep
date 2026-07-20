@@ -5,9 +5,7 @@ from tempfile import NamedTemporaryFile
 
 import pandas as pd
 import streamlit as st
-from streamlit_autorefresh import st_autorefresh
 from openai import OpenAI
-from audio_recorder_streamlit import audio_recorder
 
 from advisors_theme import apply_advisors_theme
 
@@ -167,31 +165,6 @@ st.markdown(
 )
 
 # ------------ Helpers ------------
-
-def transcribe_audio_bytes(audio_bytes: bytes) -> str:
-    """Transcribe raw audio bytes using OpenAI Responses API."""
-    with NamedTemporaryFile(delete=True, suffix=".wav") as temp_file:
-        temp_file.write(audio_bytes)
-        temp_file.flush()
-        with open(temp_file.name, "rb") as audio_file:
-            audio_data = audio_file.read()
-
-    resp = client.responses.create(
-        model="gpt-4o-mini",
-        input=[
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "input_audio",
-                        "audio": {"data": audio_data, "format": "wav"},
-                    }
-                ],
-            }
-        ],
-        response_format={"type": "text"},
-    )
-    return resp.output[0].content[0].text
 
 def init_session_state():
     defaults = {
@@ -553,10 +526,7 @@ with st.sidebar:
 # ------------ Main UI ------------
 
 st.title("Advisors Academy Pre-CAS Interview")
-st.caption("UKVI-aligned typed/audio simulator with audio transcription via OpenAI Responses API and enriched feedback for weak answers.")
-
-if st.session_state.started and not st.session_state.completed:
-    st_autorefresh(interval=1000, key="precas_timer_refresh")
+st.caption("UKVI-aligned typed simulator with enriched feedback for weak answers.")
 
 with st.expander("How your answers are scored"):
     st.markdown(
@@ -681,30 +651,6 @@ else:
                 placeholder="Type the applicant's answer here...",
             )
 
-            st.subheader("Optional: Record and submit answer")
-            audio_bytes = audio_recorder(
-                pause_threshold=2.0,
-                energy_threshold=0.01,
-                sample_rate=16000,
-            )
-            if audio_bytes:
-                st.audio(audio_bytes, format="audio/wav")
-                if st.button(
-                    "Submit recorded answer →",
-                    use_container_width=True,
-                    key=f"submit_audio_{idx}",
-                ):
-                    if len(audio_bytes) < 2000:
-                        st.warning("Recording too short or empty. Please record again.")
-                    else:
-                        try:
-                            with st.spinner("Transcribing and scoring recorded answer..."):
-                                transcript = transcribe_audio_bytes(audio_bytes)
-                            st.info(f"Transcript preview: {transcript[:100]}...")
-                            submit_answer(transcript, idx, category, question)
-                        except Exception as e:
-                            st.error(f"Transcription failed: {e}")
-
             if remaining == 0:
                 st.warning("Time is up for this question. The app will move to the next question.")
 
@@ -717,7 +663,7 @@ else:
                     key=f"submit_typed_{idx}",
                 ):
                     if not answer_text.strip():
-                        st.warning("Please type an answer sebelum submitting.")
+                        st.warning("Please type an answer before submitting.")
                     else:
                         submit_answer(answer_text, idx, category, question)
             with c_skip:
