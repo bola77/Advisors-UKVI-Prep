@@ -9,7 +9,22 @@ from openai import OpenAI
 
 from advisors_theme import apply_advisors_theme
 
+st.markdown(
+    """
+    <style>
+    /* Hide top-right toolbar icons (GitHub, Share, etc.) */
+    header [data-testid="stToolbar"] {
+        display: none !important;
+    }
 
+    /* Hide bottom-right 'Manage app' button */
+    [data-testid="stStatusWidget"] {
+        display: none !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 # ------------ Question bank & settings ------------
 
