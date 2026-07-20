@@ -544,6 +544,37 @@ def submit_answer(answer_text: str, idx: int, category: str, question: str):
     wc = len(cleaned.split())
     if wc < DEFAULT_MIN_WORDS:
         st.warning(f"Your answer is quite short ({wc} words). Aim for at least {DEFAULT_MIN_WORDS} words.")
+    start_time = st.session_state.get("question_start")
+    elapsed = time.time() - start_time if start_time else None
+    is_paste_like = elapsed is not None and elapsed < 10 and wc > 40
+
+    if is_paste_like:
+        st.error(
+            "This answer looks pasted rather than typed. "
+            "For CAS practice, please type or dictate the answer in your own words."
+        )
+        st.info(
+            "Rephrase the response in natural sentences, as you would say it in a real interview, "
+            "then submit again."
+        )
+        st.session_state.log.append(
+            {
+                "Question #": idx + 1,
+                "Category": category,
+                "Question": question,
+                "Answer": cleaned,
+                "Score": 0,
+                "Feedback": "Answer flagged as pasted; scoring skipped.",
+                "Student Tip": "Type your own spoken answer rather than pasting prepared text.",
+                "Risk Flags": "paste_like",
+                "Missing Points": "Authentic, spoken-style explanation",
+                "Counsellor Note": "Answer appears pasted; student should practise answering in their own words.",
+                "Readiness": "Elevated risk",
+                "Red Flag": False,
+                "Generic Positives": 0,
+                "Cluster Hits": 0,
+            }
+        )
 
     local = bespoke_score(cleaned, category, st.session_state.profile)
 
