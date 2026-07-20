@@ -123,6 +123,7 @@ COURSE_PROFILES = {
             "organisation",
             "business environment",
         ],
+    },
         "UG – Accounting & Finance": {
         "examples": "Accounting and Finance; Banking and Finance; Financial Management; Economics and Finance",
         "extra_tip": "Mention finance or accounting modules such as financial reporting, auditing, taxation, investment, or corporate finance, and link them to your career goal.",
