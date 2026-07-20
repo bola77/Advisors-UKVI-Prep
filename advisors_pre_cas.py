@@ -169,6 +169,7 @@ st.markdown(
 # ------------ Helpers ------------
 
 def transcribe_audio_bytes(audio_bytes: bytes) -> str:
+    """Transcribe raw audio bytes using OpenAI Responses API."""
     with NamedTemporaryFile(delete=True, suffix=".wav") as temp_file:
         temp_file.write(audio_bytes)
         temp_file.flush()
@@ -259,6 +260,7 @@ def verdict(avg: float) -> str:
 
 def bespoke_score(answer: str, category: str, profile: dict) -> dict:
     lower = answer.lower()
+
     for flag in RED_FLAGS:
         if flag in lower:
             return {
@@ -275,6 +277,7 @@ def bespoke_score(answer: str, category: str, profile: dict) -> dict:
             }
 
     generic_pos = sum(1 for signal in POSITIVE if signal in lower)
+
     course_track = profile.get("course_track")
     cluster_hits = 0
     if course_track and course_track in COURSE_PROFILES:
@@ -297,6 +300,7 @@ def bespoke_score(answer: str, category: str, profile: dict) -> dict:
         score += 1
 
     score = max(1, min(score, 5))
+
     feedback_map = {
         5: "Excellent — specific and aligned with the chosen course and goals.",
         4: "Good — add one more concrete detail to strengthen credibility.",
@@ -685,7 +689,11 @@ else:
             )
             if audio_bytes:
                 st.audio(audio_bytes, format="audio/wav")
-                if st.button("Submit recorded answer →", use_container_width=True, key=f"submit_audio_{idx}"):
+                if st.button(
+                    "Submit recorded answer →",
+                    use_container_width=True,
+                    key=f"submit_audio_{idx}",
+                ):
                     if len(audio_bytes) < 2000:
                         st.warning("Recording too short or empty. Please record again.")
                     else:
@@ -706,14 +714,18 @@ else:
                     "Submit typed answer →",
                     type="primary",
                     use_container_width=True,
-                    key	f"submit_typed_{idx}",
+                    key=f"submit_typed_{idx}",
                 ):
                     if not answer_text.strip():
-                        st.warning("Please type an answer before submitting.")
+                        st.warning("Please type an answer sebelum submitting.")
                     else:
                         submit_answer(answer_text, idx, category, question)
             with c_skip:
-                if st.button("Skip Question →", use_container_width=True, key=f"skip_{idx}"):
+                if st.button(
+                    "Skip Question →",
+                    use_container_width=True,
+                    key=f"skip_{idx}",
+                ):
                     st.session_state.log.append(
                         {
                             "Question #": idx + 1,
