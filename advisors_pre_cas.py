@@ -262,7 +262,7 @@ st.markdown(
     .block-container { padding-top: 1.2rem; padding-bottom: 2rem; max-width: 1500px; }
     .timer-card {
         border-radius: 22px;
-        padding: 1.4rem 1rem;
+        padding: 2.0rem 1rem;
         background: rgba(15, 23, 42, 0.06);
         text-align: center;
         margin-bottom: 1rem;
