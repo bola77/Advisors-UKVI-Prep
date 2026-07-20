@@ -1,6 +1,7 @@
 import random
 import time
 import json
+import re
 from tempfile import NamedTemporaryFile
 
 import pandas as pd
@@ -8,7 +9,6 @@ import streamlit as st
 from openai import OpenAI
 
 from advisors_theme import apply_advisors_theme
-
 
 # ------------ Question bank & settings ------------
 
@@ -124,11 +124,6 @@ COURSE_PROFILES = {
             "organisation",
             "business environment",
         ],
-    },
-        "UG – Accounting & Finance": {
-        "examples": "Accounting and Finance; Banking and Finance; Financial Management; Economics and Finance",
-        "extra_tip": "Mention finance or accounting modules such as financial reporting, auditing, taxation, investment, or corporate finance, and link them to your career goal.",
-        "keywords": ["accounting", "finance", "taxation", "audit", "auditing", "financial reporting", "investment", "banking", "corporate finance", "economics"],
     },
     "UG – Marketing & Digital Marketing": {
         "examples": "Marketing; Digital Marketing; Branding; Advertising and Marketing Communications",
@@ -254,15 +249,18 @@ st.set_page_config(
 )
 
 apply_advisors_theme()
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 st.markdown(
     """
     <style>
-    .block-container { padding-top: 2.0rem; padding-bottom: 2rem; max-width: 1500px; }
+    .block-container {
+        padding-top: 2.4rem;
+        padding-bottom: 2rem;
+        max-width: 1500px;
+    }
     .timer-card {
         border-radius: 22px;
-        padding: 2.0rem 3.0rem;
+        padding: 1.4rem 1rem;
         background: rgba(15, 23, 42, 0.06);
         text-align: center;
         margin-bottom: 1rem;
@@ -277,11 +275,13 @@ st.markdown(
     .timer-green { color: #15803d; }
     .timer-amber { color: #d97706; }
     .timer-red { color: #dc2626; }
+
+    header [data-testid="stToolbar"] { display: none !important; }
+    [data-testid="stStatusWidget"] { display: none !important; }
     </style>
     """,
     unsafe_allow_html=True,
 )
-
 st.markdown(
     """
     <style>
@@ -298,6 +298,10 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
 # ------------ Helpers ------------
 
 def init_session_state():
@@ -365,8 +369,46 @@ def verdict(avg: float) -> str:
         return "🟠 At risk — more practice needed"
     return "🔴 High risk — urgent coaching required"
 
+# --- NEW: basic gibberish detector ---
+
+def is_basic_gibberish(text: str) -> bool:
+    cleaned = text.strip()
+    if len(cleaned) < 10:
+        return True  # extremely short, likely not a real answer
+
+    # Too many non-letter characters
+    non_alpha = sum(1 for c in cleaned if not c.isalpha() and not c.isspace())
+    if non_alpha > len(cleaned) * 0.3:
+        return True
+
+    # Words with no vowels (e.g. "dfghj", "lkj")
+    words = cleaned.split()
+    long_no_vowel = [
+        w for w in words
+        if len(w) >= 4 and not re.search(r"[aeiouAEIOU]", w)
+    ]
+    if len(long_no_vowel) >= 2:
+        return True
+
+    return False
+
 def bespoke_score(answer: str, category: str, profile: dict) -> dict:
     lower = answer.lower()
+
+    # NEW: short-circuit gibberish as high-risk, non-meaningful answer
+    if is_basic_gibberish(answer):
+        return {
+            "score": 1,
+            "feedback": "Answer appears to be random or not meaningful.",
+            "student_tip": "Type a clear sentence in your own words that directly answers the question.",
+            "risk_flags": ["gibberish"],
+            "missing_points": ["Coherent explanation", "Real reasons and examples"],
+            "counsellor_note": "Student provided gibberish; needs guidance on answering in full sentences.",
+            "red_flag": True,
+            "generic_pos": 0,
+            "cluster_hits": 0,
+            "readiness": "High risk",
+        }
 
     for flag in RED_FLAGS:
         if flag in lower:
