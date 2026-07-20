@@ -242,7 +242,7 @@ COURSE_PROFILES = {
 # ------------ Streamlit & OpenAI setup ------------
 
 st.set_page_config(
-    page_title="Advisors Academy Pre-CAS Interview",
+    page_title="Pre UKVI Compliance Interview",
     page_icon="🎓",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -732,7 +732,7 @@ with st.sidebar:
 
 # ------------ Main UI ------------
 
-st.title("Advisors Academy Pre-CAS Interview")
+st.title("Pre UKVI Compliance Interview")
 st.caption("UKVI-aligned typed simulator with enriched feedback for weak answers.")
 
 with st.expander("How your answers are scored"):
