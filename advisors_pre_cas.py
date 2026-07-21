@@ -575,7 +575,7 @@ def submit_answer(answer_text: str, idx: int, category: str, question: str):
                 "Cluster Hits": 0,
             }
         )
-
+        return
     local = bespoke_score(cleaned, category, st.session_state.profile)
 
     if local.get("red_flag"):
